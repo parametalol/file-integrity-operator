@@ -9,7 +9,6 @@ import (
 	"os"
 	"time"
 
-	"golang.org/x/net/context"
 	core "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -117,7 +116,7 @@ func (ctx *Context) getNamespace(ns string) (string, error) {
 		},
 	}
 	fmt.Println(namespaceObj)
-	_, err := ctx.kubeclient.CoreV1().Namespaces().Create(context.TODO(), namespaceObj, metav1.CreateOptions{})
+	_, err := ctx.kubeclient.CoreV1().Namespaces().Create(goctx.TODO(), namespaceObj, metav1.CreateOptions{})
 	if apierrors.IsAlreadyExists(err) {
 		return "", fmt.Errorf("namespace %s already exists: %w", ns, err)
 	} else if err != nil {
@@ -126,7 +125,7 @@ func (ctx *Context) getNamespace(ns string) (string, error) {
 	ctx.AddCleanupFn(func() error {
 		gracePeriodSeconds := int64(0)
 		opts := metav1.DeleteOptions{GracePeriodSeconds: &gracePeriodSeconds}
-		return ctx.kubeclient.CoreV1().Namespaces().Delete(context.TODO(), ns, opts)
+		return ctx.kubeclient.CoreV1().Namespaces().Delete(goctx.TODO(), ns, opts)
 	})
 	return ns, nil
 }

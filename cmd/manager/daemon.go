@@ -300,7 +300,7 @@ func daemonMainLoop(cmd *cobra.Command, args []string) {
 	errChan := make(chan error)
 	ctx, cancel := context.WithCancel(context.Background())
 	sigTermChan := make(chan os.Signal, 2)
-	signal.Notify(sigTermChan, syscall.SIGTERM, syscall.SIGKILL)
+	signal.Notify(sigTermChan, syscall.SIGTERM)
 
 	// integrityInstanceLoop is not added to the waitgroup because the watcher would stall wg.Wait() indefinitely. It
 	// will just die with the process and does not have anything to clean up.

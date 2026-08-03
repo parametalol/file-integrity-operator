@@ -71,7 +71,7 @@ var _ reconcile.Reconciler = &FileIntegrityReconciler{}
 func (r *FileIntegrityReconciler) handleDefaultConfigMaps(logger logr.Logger, f *v1alpha1.FileIntegrity) (*corev1.ConfigMap, bool, error) {
 	var scriptsUpdated bool
 	scriptCm := &corev1.ConfigMap{}
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{
+	if err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.AideReinitScriptConfigMapName,
 		Namespace: common.FileIntegrityNamespace,
 	}, scriptCm); err != nil {
@@ -79,20 +79,20 @@ func (r *FileIntegrityReconciler) handleDefaultConfigMaps(logger logr.Logger, f 
 			return nil, scriptsUpdated, err
 		}
 		// does not exist, create
-		if err := r.Client.Create(context.TODO(), aideReinitScript()); err != nil {
+		if err := r.Create(context.TODO(), aideReinitScript()); err != nil {
 			return nil, scriptsUpdated, err
 		}
 	} else if ok := dataMatchesReinitScript(scriptCm); !ok {
 		// The script data is outdated because of a manual change or an operator update, so we need to restore it.
 		logger.Info("re-init script configMap has changed, restoring")
-		if err := r.Client.Update(context.TODO(), aideReinitScript()); err != nil {
+		if err := r.Update(context.TODO(), aideReinitScript()); err != nil {
 			return nil, scriptsUpdated, err
 		}
 		scriptsUpdated = true
 	}
 
 	pauseCm := &corev1.ConfigMap{}
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{
+	if err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.PauseConfigMapName,
 		Namespace: common.FileIntegrityNamespace,
 	}, pauseCm); err != nil {
@@ -100,20 +100,20 @@ func (r *FileIntegrityReconciler) handleDefaultConfigMaps(logger logr.Logger, f 
 			return nil, scriptsUpdated, err
 		}
 		// does not exist, create
-		if err := r.Client.Create(context.TODO(), aidePauseScript()); err != nil {
+		if err := r.Create(context.TODO(), aidePauseScript()); err != nil {
 			return nil, scriptsUpdated, err
 		}
 	} else if ok := dataMatchesPauseScript(pauseCm); !ok {
 		// The script data is outdated because of a manual change or an operator update, so we need to restore it.
 		logger.Info("holdoff script configMap has changed, restoring")
-		if err := r.Client.Update(context.TODO(), aidePauseScript()); err != nil {
+		if err := r.Update(context.TODO(), aidePauseScript()); err != nil {
 			return nil, scriptsUpdated, err
 		}
 		scriptsUpdated = true
 	}
 
 	confCm := &corev1.ConfigMap{}
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{
+	if err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      f.Name,
 		Namespace: common.FileIntegrityNamespace,
 	}, confCm); err != nil {
@@ -121,7 +121,7 @@ func (r *FileIntegrityReconciler) handleDefaultConfigMaps(logger logr.Logger, f 
 			return nil, scriptsUpdated, err
 		}
 		// does not exist, create
-		if err := r.Client.Create(context.TODO(), defaultAIDEConfigMap(f.Name)); err != nil {
+		if err := r.Create(context.TODO(), defaultAIDEConfigMap(f.Name)); err != nil {
 			return nil, scriptsUpdated, err
 		}
 		return nil, scriptsUpdated, nil
@@ -130,7 +130,7 @@ func (r *FileIntegrityReconciler) handleDefaultConfigMaps(logger logr.Logger, f 
 		_, hasOwner := confCm.Labels[common.IntegrityOwnerLabelKey]
 		if !hasData || !hasOwner {
 			// we had the configMap but its data or owner label was missing, so restore it.
-			if err := r.Client.Update(context.TODO(), defaultAIDEConfigMap(f.Name)); err != nil {
+			if err := r.Update(context.TODO(), defaultAIDEConfigMap(f.Name)); err != nil {
 				return nil, scriptsUpdated, err
 			}
 			return nil, scriptsUpdated, nil
@@ -148,7 +148,7 @@ func (r *FileIntegrityReconciler) GetFailedNodes(fi *v1alpha1.FileIntegrity) ([]
 	listOpts := client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set{common.IntegrityOwnerLabelKey: fi.Name}),
 	}
-	err := r.Client.List(context.TODO(), nodeStatusList, &listOpts)
+	err := r.List(context.TODO(), nodeStatusList, &listOpts)
 	if err != nil {
 		// if not found, return empty list
 		if kerr.IsNotFound(err) {
@@ -194,7 +194,7 @@ func (r *FileIntegrityReconciler) createReinitDaemonSet(instance *v1alpha1.FileI
 	dsName := common.ReinitDaemonSetNodeName(instance.Name, node)
 	dsNamespace := common.FileIntegrityNamespace
 
-	getErr := r.Client.Get(context.TODO(), types.NamespacedName{Name: dsName, Namespace: dsNamespace}, daemonSet)
+	getErr := r.Get(context.TODO(), types.NamespacedName{Name: dsName, Namespace: dsNamespace}, daemonSet)
 	if getErr == nil {
 		// Exists, so continue.
 		return nil, false
@@ -225,12 +225,12 @@ func (r *FileIntegrityReconciler) createReinitDaemonSet(instance *v1alpha1.FileI
 		return err, false
 	}
 
-	createErr := r.Client.Create(context.TODO(), ds)
+	createErr := r.Create(context.TODO(), ds)
 	if createErr != nil {
 		return createErr, false
 	}
 
-	r.Metrics.IncFileIntegrityReinitDaemonsetUpdate()
+	r.IncFileIntegrityReinitDaemonsetUpdate()
 	return nil, true
 }
 
@@ -241,7 +241,7 @@ func (r *FileIntegrityReconciler) tryGettingNode(node string) (*corev1.Node, err
 		return nil, nil
 	}
 	n := corev1.Node{}
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: node}, &n)
+	err := r.Get(context.TODO(), types.NamespacedName{Name: node}, &n)
 	if err != nil {
 		return nil, err
 	}
@@ -270,13 +270,13 @@ func (r *FileIntegrityReconciler) updateAideConfig(conf *corev1.ConfigMap, data,
 		confCopy.Annotations[common.AideConfigUpdatedAnnotationKey] = strings.Join(nodeList, ",")
 	}
 
-	return r.Client.Update(context.TODO(), confCopy)
+	return r.Update(context.TODO(), confCopy)
 }
 
 func (r *FileIntegrityReconciler) retrieveAndAnnotateAideConfig(conf *corev1.ConfigMap, node string) error {
 	cachedConf := &corev1.ConfigMap{}
 	// Get the latest config...
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: conf.Name, Namespace: conf.Namespace}, cachedConf)
+	err := r.Get(context.TODO(), types.NamespacedName{Name: conf.Name, Namespace: conf.Namespace}, cachedConf)
 	if err != nil {
 		return err
 	}
@@ -287,7 +287,7 @@ func (r *FileIntegrityReconciler) retrieveAndAnnotateAideConfig(conf *corev1.Con
 func (r *FileIntegrityReconciler) aideConfigIsDefault(instance *v1alpha1.FileIntegrity) (bool, error) {
 	defaultConfigMap := defaultAIDEConfigMap(instance.Name)
 	currentConfigMap := &corev1.ConfigMap{}
-	err := r.Client.Get(context.TODO(), types.NamespacedName{
+	err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      defaultConfigMap.Name,
 		Namespace: defaultConfigMap.Namespace,
 	}, currentConfigMap)
@@ -321,7 +321,7 @@ func (r *FileIntegrityReconciler) reconcileUserConfig(instance *v1alpha1.FileInt
 	reqLogger.Info("reconciling user-provided configMap")
 
 	userConfigMap := &corev1.ConfigMap{}
-	err := r.Client.Get(context.TODO(), types.NamespacedName{
+	err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      instance.Spec.Config.Name,
 		Namespace: instance.Spec.Config.Namespace,
 	}, userConfigMap)
@@ -374,7 +374,7 @@ func (r *FileIntegrityReconciler) validatePriorityClass(ctx context.Context, pcN
 	}
 
 	pc := &schedulingv1.PriorityClass{}
-	err := r.Client.Get(ctx, types.NamespacedName{Name: pcName}, pc)
+	err := r.Get(ctx, types.NamespacedName{Name: pcName}, pc)
 	if err != nil {
 		if kerr.IsNotFound(err) {
 			logger.Info("PriorityClass not found, ignoring", "priorityClassName", pcName)
@@ -393,7 +393,7 @@ func (r *FileIntegrityReconciler) validatePriorityClass(ctx context.Context, pcN
 func (r *FileIntegrityReconciler) getOperatorDeploymentImage() (string, error) {
 	operatorDeployment := &appsv1.Deployment{}
 	image := ""
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: "file-integrity-operator", Namespace: common.FileIntegrityNamespace}, operatorDeployment); err != nil {
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: "file-integrity-operator", Namespace: common.FileIntegrityNamespace}, operatorDeployment); err != nil {
 		return "", err
 	}
 	if len(operatorDeployment.Spec.Template.Spec.Containers) > 0 {
@@ -412,7 +412,7 @@ func (r *FileIntegrityReconciler) FileIntegrityControllerReconcile(request recon
 
 	// Fetch the FileIntegrity instance
 	instance := &v1alpha1.FileIntegrity{}
-	err := r.Client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if kerr.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -436,7 +436,7 @@ func (r *FileIntegrityReconciler) FileIntegrityControllerReconcile(request recon
 			// Clear the PriorityClassName to avoid DaemonSet pod creation failures
 			instanceCopy := instance.DeepCopy()
 			instanceCopy.Spec.PriorityClassName = ""
-			if err := r.Client.Update(context.TODO(), instanceCopy); err != nil {
+			if err := r.Update(context.TODO(), instanceCopy); err != nil {
 				reqLogger.Error(err, "Error clearing invalid PriorityClassName")
 				// Continue anyway, the daemonset will fail to create pods but won't block reconciliation
 			} else {
@@ -491,7 +491,7 @@ func (r *FileIntegrityReconciler) FileIntegrityControllerReconcile(request recon
 			}
 			reqLogger.Info("Removing reinit on failed annotation")
 			delete(instanceCopy.Annotations, common.AideDatabaseReinitOnFailedAnnotationKey)
-			if err := r.Client.Update(context.TODO(), instanceCopy); err != nil {
+			if err := r.Update(context.TODO(), instanceCopy); err != nil {
 				reqLogger.Error(err, "error updating FileIntegrity annotation for reinit")
 				return reconcile.Result{}, err
 			}
@@ -520,10 +520,10 @@ func (r *FileIntegrityReconciler) FileIntegrityControllerReconcile(request recon
 			// we don't create reinit daemonset if it already exists or the node is not found
 			if forceReinit {
 				reqLogger.Info("re-init daemonSet created, triggered by demand or nodes", "nodes", nodeToReinit)
-				r.Metrics.IncFileIntegrityReinitByDemand()
+				r.IncFileIntegrityReinitByDemand()
 			} else {
 				reqLogger.Info("re-init daemonSet created, triggered by configuration change")
-				r.Metrics.IncFileIntegrityReinitByConfig()
+				r.IncFileIntegrityReinitByConfig()
 			}
 		}
 		reqLogger.Info("Annotating AIDE config to be updated.")
@@ -537,7 +537,7 @@ func (r *FileIntegrityReconciler) FileIntegrityControllerReconcile(request recon
 
 		if needChange {
 			reqLogger.Info("Removing re-init annotation.")
-			if err := r.Client.Update(context.TODO(), fiCopy); err != nil {
+			if err := r.Update(context.TODO(), fiCopy); err != nil {
 				reqLogger.Info("Re-init annotation failed to be removed, re-queueing")
 				return reconcile.Result{}, nil
 			}
@@ -545,7 +545,7 @@ func (r *FileIntegrityReconciler) FileIntegrityControllerReconcile(request recon
 	}
 
 	daemonSet := &appsv1.DaemonSet{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: daemonSetName, Namespace: common.FileIntegrityNamespace}, daemonSet)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: daemonSetName, Namespace: common.FileIntegrityNamespace}, daemonSet)
 	if err != nil {
 		if !kerr.IsNotFound(err) {
 			reqLogger.Error(err, "error getting daemonSet")
@@ -559,7 +559,7 @@ func (r *FileIntegrityReconciler) FileIntegrityControllerReconcile(request recon
 		// Check if we're past the initial delay timer by evaluating
 		// the time since creation.
 		delayTime := time.Duration(instance.Spec.Config.InitialDelay) * time.Second
-		shouldScheduleAt := instance.CreationTimestamp.Time.Add(delayTime)
+		shouldScheduleAt := instance.CreationTimestamp.Add(delayTime)
 
 		if time.Now().Before(shouldScheduleAt) {
 			s := fmt.Sprintf("Re-queuing request for %s seconds for initial delay", delayTime)
@@ -576,13 +576,13 @@ func (r *FileIntegrityReconciler) FileIntegrityControllerReconcile(request recon
 			return reconcile.Result{}, err
 		}
 
-		createErr := r.Client.Create(context.TODO(), ds)
+		createErr := r.Create(context.TODO(), ds)
 		if createErr != nil && !kerr.IsAlreadyExists(createErr) {
 			reqLogger.Error(createErr, "error creating daemonSet")
 			return reconcile.Result{}, createErr
 		}
 		if !kerr.IsAlreadyExists(createErr) {
-			r.Metrics.IncFileIntegrityDaemonsetUpdate()
+			r.IncFileIntegrityDaemonsetUpdate()
 		}
 	} else {
 		dsCopy := daemonSet.DeepCopy()
@@ -594,11 +594,11 @@ func (r *FileIntegrityReconciler) FileIntegrityControllerReconcile(request recon
 		volsNeedUpdate := updateDSContainerVolumes(dsCopy, instance, operatorImage, reqLogger)
 
 		if argsNeedUpdate || imgNeedsUpdate || nsNeedsUpdate || tolsNeedsUpdate || pcNeedsUpdate || volsNeedUpdate || scriptsUpdated {
-			if err := r.Client.Update(context.TODO(), dsCopy); err != nil {
+			if err := r.Update(context.TODO(), dsCopy); err != nil {
 				return reconcile.Result{}, err
 			}
 
-			r.Metrics.IncFileIntegrityDaemonsetUpdate()
+			r.IncFileIntegrityDaemonsetUpdate()
 
 			// TODO: We might want to change this to something that signals to the daemonSet pods that they need to
 			// gracefully exit, and let them restart that way.
@@ -607,7 +607,7 @@ func (r *FileIntegrityReconciler) FileIntegrityControllerReconcile(request recon
 				return reconcile.Result{}, err
 			}
 			reqLogger.Info("FileIntegrity daemon configuration changed - pods restarted.")
-			r.Metrics.IncFileIntegrityDaemonsetPodKill()
+			r.IncFileIntegrityDaemonsetPodKill()
 		}
 	}
 	return reconcile.Result{}, nil
@@ -616,16 +616,16 @@ func (r *FileIntegrityReconciler) FileIntegrityControllerReconcile(request recon
 // The old daemonSets had a "aide-ds-" prefix, but that is no longer. If any are around after upgrade, delete them.
 func (r *FileIntegrityReconciler) deleteLegacyDaemonSets(instance *v1alpha1.FileIntegrity) error {
 	daemonSetList := &appsv1.DaemonSetList{}
-	if err := r.Client.List(context.TODO(), daemonSetList, &client.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+	if err := r.List(context.TODO(), daemonSetList, &client.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
 		common.IntegrityOwnerLabelKey: instance.Name,
 	})}); err != nil {
 		return err
 	}
-	for i, _ := range daemonSetList.Items {
+	for i := range daemonSetList.Items {
 		daemonSet := &daemonSetList.Items[i]
 		// Check for the old prefixed ds, delete it (it's being replaced by the newly named ones.)
 		if strings.HasPrefix(daemonSet.Name, "aide-ds-") {
-			if deleteErr := r.Client.Delete(context.TODO(), daemonSet); deleteErr != nil {
+			if deleteErr := r.Delete(context.TODO(), daemonSet); deleteErr != nil {
 				return deleteErr
 			}
 		}

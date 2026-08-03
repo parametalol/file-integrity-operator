@@ -472,7 +472,7 @@ func replaceNamespaceFromManifest(t *testing.T, nsFrom, nsTo string, namespacedM
 		originalManifest = data
 	})
 
-	newContents := strings.Replace(string(originalManifest), nsFrom, nsTo, -1)
+	newContents := strings.ReplaceAll(string(originalManifest), nsFrom, nsTo)
 
 	// #nosec
 	err := os.WriteFile(manPath, []byte(newContents), 0644)
