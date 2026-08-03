@@ -48,13 +48,13 @@ type GoTestOptions struct {
 }
 
 var validVendorCmds = map[string]struct{}{
-	"build":   struct{}{},
-	"clean":   struct{}{},
-	"get":     struct{}{},
-	"install": struct{}{},
-	"list":    struct{}{},
-	"run":     struct{}{},
-	"test":    struct{}{},
+	"build":   {},
+	"clean":   {},
+	"get":     {},
+	"install": {},
+	"list":    {},
+	"run":     {},
+	"test":    {},
 }
 
 // GoBuild runs "go build" configured with opts.

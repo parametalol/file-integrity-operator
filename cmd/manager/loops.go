@@ -288,5 +288,4 @@ func integrityInstanceLoop(ctx context.Context, rt *daemonRuntime, conf *daemonC
 	}
 
 	errChan <- fmt.Errorf("reached the end of FileIntegrity instance loop. should not happen")
-	return
 }

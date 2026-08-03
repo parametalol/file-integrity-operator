@@ -89,9 +89,12 @@ func addRequiredAnnotations(csv map[string]interface{}) {
 
 func replaceVersion(oldVersion, newVersion string, csv map[string]interface{}) {
 	spec, ok := csv["spec"].(map[string]interface{})
-	metadata, ok := csv["metadata"].(map[string]interface{})
 	if !ok {
 		log.Fatal("Error: 'spec' does not exist in the CSV content")
+	}
+	metadata, ok := csv["metadata"].(map[string]interface{})
+	if !ok {
+		log.Fatal("Error: 'metadata' does not exist in the CSV content")
 	}
 
 	fmt.Printf("Updating version references from %s to %s", oldVersion, newVersion)
