@@ -532,7 +532,7 @@ type ServiceMonitorUpdater func(*monitoringv1.ServiceMonitor) error
 // based on the passed Service object.
 func GenerateServiceMonitor(s *corev1.Service) *monitoringv1.ServiceMonitor {
 	labels := make(map[string]string)
-	for k, v := range s.ObjectMeta.Labels {
+	for k, v := range s.Labels {
 		labels[k] = v
 	}
 	endpoints := populateEndpointsFromServicePorts(s)
@@ -540,8 +540,8 @@ func GenerateServiceMonitor(s *corev1.Service) *monitoringv1.ServiceMonitor {
 
 	return &monitoringv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      s.ObjectMeta.Name,
-			Namespace: s.ObjectMeta.Namespace,
+			Name:      s.Name,
+			Namespace: s.Namespace,
 			Labels:    labels,
 			OwnerReferences: []metav1.OwnerReference{
 				{
@@ -569,4 +569,10 @@ func populateEndpointsFromServicePorts(s *corev1.Service) []monitoringv1.Endpoin
 		endpoints = append(endpoints, monitoringv1.Endpoint{Port: port.Name})
 	}
 	return endpoints
+}
+
+func IgnoreError(f func() error) {
+	if f != nil {
+		_ = f()
+	}
 }

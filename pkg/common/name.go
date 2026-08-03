@@ -22,7 +22,7 @@ func LengthName(maxLen int, hashPrefix string, format string, a ...interface{}) 
 	// purposes, but only as a string shortener
 	// #nosec G401
 	hasher := sha1.New()
-	io.WriteString(hasher, friendlyName)
+	_, _ = io.WriteString(hasher, friendlyName)
 	hashedName := hashPrefix + fmt.Sprintf("%x", hasher.Sum(nil))
 
 	if len(hashedName) >= maxLen {

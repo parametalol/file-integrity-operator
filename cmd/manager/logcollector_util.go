@@ -112,13 +112,9 @@ func encodetoBase64(src []byte) string {
 	enc := base64.NewEncoder(base64.StdEncoding, pw)
 	go func() {
 		_, err := io.Copy(enc, r)
-		enc.Close()
+		common.IgnoreError(enc.Close)
 
-		if err != nil {
-			pw.CloseWithError(err)
-		} else {
-			pw.Close()
-		}
+		_ = pw.CloseWithError(err)
 	}()
 	out, _ := io.ReadAll(pr)
 	return string(out)

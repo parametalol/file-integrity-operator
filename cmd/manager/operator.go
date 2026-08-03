@@ -102,7 +102,7 @@ func printVersion() {
 func RunOperator(cmd *cobra.Command, args []string) {
 	flags := cmd.Flags()
 	flags.AddGoFlagSet(flag.CommandLine)
-	flags.Parse(args)
+	_ = flags.Parse(args)
 
 	ctrl.SetLogger(zap.New())
 

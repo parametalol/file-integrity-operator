@@ -3,38 +3,40 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/openshift/file-integrity-operator/pkg/common"
+	"gopkg.in/yaml.v3"
 )
 
 func readCSV(csvFilename string, csv *map[string]interface{}) {
 	yamlFile, err := os.ReadFile(csvFilename)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Error: Failed to read file '%s'", csvFilename))
+		log.Fatalf("Error: Failed to read file '%s'", csvFilename)
 	}
 
 	err = yaml.Unmarshal(yamlFile, csv)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Error: Failed to unmarshal yaml file '%s'", csvFilename))
+		log.Fatalf("Error: Failed to unmarshal yaml file '%s'", csvFilename)
 	}
 }
 
 func replaceCSV(csvFilename string, outputCSVFilename string, csv map[string]interface{}) {
 	err := os.Remove(csvFilename)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Error: Failed to remofe file '%s'", csvFilename))
+		log.Fatalf("Error: Failed to remofe file '%s'", csvFilename)
 	}
 
 	f, err := os.Create(outputCSVFilename)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Error: Failed to create file '%s'", outputCSVFilename))
+		log.Fatalf("Error: Failed to create file '%s'", outputCSVFilename)
 	}
 
 	enc := yaml.NewEncoder(f)
-	defer enc.Close()
+	defer common.IgnoreError(enc.Close)
 	enc.SetIndent(2)
 
 	err = enc.Encode(csv)
@@ -87,12 +89,15 @@ func addRequiredAnnotations(csv map[string]interface{}) {
 
 func replaceVersion(oldVersion, newVersion string, csv map[string]interface{}) {
 	spec, ok := csv["spec"].(map[string]interface{})
-	metadata, ok := csv["metadata"].(map[string]interface{})
 	if !ok {
 		log.Fatal("Error: 'spec' does not exist in the CSV content")
 	}
+	metadata, ok := csv["metadata"].(map[string]interface{})
+	if !ok {
+		log.Fatal("Error: 'metadata' does not exist in the CSV content")
+	}
 
-	fmt.Println(fmt.Sprintf("Updating version references from %s to %s", oldVersion, newVersion))
+	fmt.Printf("Updating version references from %s to %s\n", oldVersion, newVersion)
 
 	spec["version"] = newVersion
 	spec["replaces"] = "file-integrity-operator.v" + oldVersion
@@ -102,7 +107,7 @@ func replaceVersion(oldVersion, newVersion string, csv map[string]interface{}) {
 	annotations := metadata["annotations"].(map[string]interface{})
 	annotations["olm.skipRange"] = strings.Replace(annotations["olm.skipRange"].(string), oldVersion, newVersion, 1)
 
-	fmt.Println(fmt.Sprintf("Updated version references from %s to %s", oldVersion, newVersion))
+	fmt.Printf("Updated version references from %s to %s\n", oldVersion, newVersion)
 }
 
 func replaceIcon(csv map[string]interface{}) {
@@ -116,7 +121,7 @@ func replaceIcon(csv map[string]interface{}) {
 	iconPath := "../bundle/icons/icon.png"
 	iconData, err := os.ReadFile(iconPath)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Error: Failed to read icon file '%s'", iconPath))
+		log.Fatalf("Error: Failed to read icon file '%s'", iconPath)
 	}
 	icon := make(map[string]string)
 	icon["base64data"] = base64.StdEncoding.EncodeToString(iconData)
@@ -127,7 +132,7 @@ func replaceIcon(csv map[string]interface{}) {
 
 	spec["icon"] = icons
 
-	fmt.Println(fmt.Sprintf("Updated the operator image to use icon in %s", iconPath))
+	fmt.Printf("Updated the operator image to use icon in %s\n", iconPath)
 }
 
 func recoverFromReplaceImages() {
@@ -152,11 +157,11 @@ func replaceImages(csv map[string]interface{}, operatorImage string, translateTo
 		imageSha := parts[1]
 		registry := "registry.redhat.io/compliance/openshift-file-integrity-rhel8-operator"
 		pullSpec = registry + delimiter + imageSha
-		fmt.Println(fmt.Sprintf("Translated operator image to Red Hat registry: %s", pullSpec))
+		fmt.Printf("Translated operator image to Red Hat registry: %s\n", pullSpec)
 	} else {
 		// Use the provided operator image directly without translation
 		pullSpec = operatorImage
-		fmt.Println(fmt.Sprintf("Using operator image as-is: %s", pullSpec))
+		fmt.Printf("Using operator image as-is: %s\n", pullSpec)
 	}
 
 	env, ok := csv["spec"].(map[string]interface{})["install"].(map[string]interface{})["spec"].(map[string]interface{})["deployments"].([]interface{})[0].(map[string]interface{})["spec"].(map[string]interface{})["template"].(map[string]interface{})["spec"].(map[string]interface{})["containers"].([]interface{})[0].(map[string]interface{})["env"].([]interface{})
@@ -205,21 +210,21 @@ func main() {
 	// Override with provided operator image if given
 	if len(os.Args) >= 5 && os.Args[4] != "" {
 		operatorImageURL = os.Args[4]
-		fmt.Println(fmt.Sprintf("Using provided operator image: %s", operatorImageURL))
+		fmt.Printf("Using provided operator image: %s\n", operatorImageURL)
 		// When operator image is provided, default to not translating
 		translateToRedHat = false
 	} else {
-		fmt.Println(fmt.Sprintf("Using default operator image: %s", operatorImageURL))
+		fmt.Printf("Using default operator image: %s\n", operatorImageURL)
 	}
 
 	// Override translation flag if provided
 	if len(os.Args) >= 6 {
 		translateToRedHat = os.Args[5] == "true"
-		fmt.Println(fmt.Sprintf("Translation to Red Hat registry: %v", translateToRedHat))
+		fmt.Printf("Translation to Red Hat registry: %v\n", translateToRedHat)
 	}
 
 	csvFilename := getInputCSVFilePath(manifestsDir)
-	fmt.Println(fmt.Sprintf("Found manifest in %s", csvFilename))
+	fmt.Printf("Found manifest in %s\n", csvFilename)
 
 	readCSV(csvFilename, &csv)
 
@@ -231,5 +236,5 @@ func main() {
 
 	outputCSVFilename := getOutputCSVFilePath(manifestsDir, newVersion)
 	replaceCSV(csvFilename, outputCSVFilename, csv)
-	fmt.Println(fmt.Sprintf("Replaced CSV manifest for %s", newVersion))
+	fmt.Printf("Replaced CSV manifest for %s\n", newVersion)
 }

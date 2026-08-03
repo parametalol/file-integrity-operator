@@ -40,21 +40,22 @@ func logCollectorMainLoop(ctx context.Context, rt *daemonRuntime, conf *daemonCo
 			return
 		// We've received a result. This will block when the result channel is empty, until our timeout case below.
 		case lastResult := <-rt.GetResult():
-			if lastResult == -1 || lastResult == 18 {
+			switch lastResult {
+			case -1, 18:
 				// We haven't received a result yet.
 				// Or return code 18 - AIDE ran prior to there being an aide database.
 				DBG("No scan result available")
-			} else if lastResult == 17 {
+			case 17:
 				// This is an AIDE config line error. We need to report this with an ERROR configMap without uploading
 				// a log.
 				logAndTryReportingDaemonError(logCollectorCtx, rt, conf, "AIDE error: %v", fmt.Errorf("17 Invalid configureline error"))
-			} else if lastResult == 0 {
+			case 0:
 				// The check passed!
 				if err := reportOK(logCollectorCtx, conf, rt); err != nil {
 					// Considering this a non-fatal error right now.
 					LOG("failed reporting scan result: %v", err)
 				}
-			} else {
+			default:
 				// Locking of the AIDE files is done in handleFailedResult()
 				if !handleFailedResult(logCollectorCtx, rt, conf, errChan) {
 					return
