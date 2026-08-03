@@ -82,7 +82,7 @@ func getOwnCgroupPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer common.IgnoreError(f.Close)
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {

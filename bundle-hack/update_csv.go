@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/openshift/file-integrity-operator/pkg/common"
 	"gopkg.in/yaml.v3"
 )
 
@@ -35,7 +36,7 @@ func replaceCSV(csvFilename string, outputCSVFilename string, csv map[string]int
 	}
 
 	enc := yaml.NewEncoder(f)
-	defer enc.Close()
+	defer common.IgnoreError(enc.Close)
 	enc.SetIndent(2)
 
 	err = enc.Encode(csv)

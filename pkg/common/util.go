@@ -570,3 +570,9 @@ func populateEndpointsFromServicePorts(s *corev1.Service) []monitoringv1.Endpoin
 	}
 	return endpoints
 }
+
+func IgnoreError(f func() error) {
+	if f != nil {
+		_ = f()
+	}
+}

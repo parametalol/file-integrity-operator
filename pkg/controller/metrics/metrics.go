@@ -10,14 +10,13 @@ import (
 
 	backoff "github.com/cenkalti/backoff/v4"
 	"github.com/go-logr/logr"
+	"github.com/openshift/file-integrity-operator/pkg/common"
+	libgocrypto "github.com/openshift/library-go/pkg/crypto"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	dto "github.com/prometheus/client_model/go"
-
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
-
-	libgocrypto "github.com/openshift/library-go/pkg/crypto"
 )
 
 const (
@@ -219,7 +218,7 @@ func (m *Metrics) Start(ctx context.Context) error {
 
 	go func() {
 		<-ctx.Done()
-		server.Close()
+		common.IgnoreError(server.Close)
 	}()
 
 	err := server.ListenAndServeTLS(servingCertFile, servingKeyFile)

@@ -276,7 +276,7 @@ func startMemoryProfiling(conf *daemonConfig) {
 		DBG("Starting pprof endpoint at %s/debug/pprof/", pprofAddr)
 		mux := http.NewServeMux()
 		mux.HandleFunc("/debug/pprof/", pprof.Index)
-		go http.ListenAndServe(pprofAddr, mux)
+		go func() { _ = http.ListenAndServe(pprofAddr, mux) }()
 	}
 }
 

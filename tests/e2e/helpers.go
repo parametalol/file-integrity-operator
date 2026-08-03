@@ -2173,7 +2173,7 @@ func assertOperatorLogsShowSecretsWait(t *testing.T, f *framework.Framework, nam
 
 		buf := new(bytes.Buffer)
 		_, copyErr := io.Copy(buf, podLogs)
-		podLogs.Close()
+		common.IgnoreError(podLogs.Close)
 		if copyErr != nil {
 			t.Logf("Warning: Failed to copy operator logs: %v", copyErr)
 			continue
@@ -2345,12 +2345,12 @@ func writeToArtifactsDir(dir, scan, pod, container, log string) error {
 		return err
 	}
 	// #nosec G307
-	defer logFile.Close()
+	defer common.IgnoreError(logFile.Close)
 	_, err = io.WriteString(logFile, log)
 	if err != nil {
 		return err
 	}
-	logFile.Sync()
+	common.IgnoreError(logFile.Sync)
 	return nil
 }
 
